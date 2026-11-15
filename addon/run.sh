@@ -126,6 +126,12 @@ if [ -f /app/AGENTS.md ]; then
     cp -f /app/AGENTS.md /root/AGENTS.md 2>/dev/null || true
     cp -f /app/AGENTS.md /data/AGENTS.md 2>/dev/null || true
 fi
+if [ -f /app/HA_CONTEXT.md ]; then
+    cp -f /app/HA_CONTEXT.md /root/HA_CONTEXT.md 2>/dev/null || true
+    if [ ! -f /data/HA_CONTEXT.md ]; then
+        cp -f /app/HA_CONTEXT.md /data/HA_CONTEXT.md 2>/dev/null || true
+    fi
+fi
 if [ -f /data/HA_CONTEXT.md ]; then
     cp -f /data/HA_CONTEXT.md /app/HA_CONTEXT.md 2>/dev/null || true
     cp -f /data/HA_CONTEXT.md /root/HA_CONTEXT.md 2>/dev/null || true

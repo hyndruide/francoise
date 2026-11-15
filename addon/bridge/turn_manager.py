@@ -355,6 +355,10 @@ class ActiveTurn:
                 except queue.Full:
                     pass
 
+    def emit(self, event: Dict[str, Any]) -> None:
+        """Alias for broadcast for backward compatibility with streaming handlers."""
+        self.broadcast(event)
+
     def get_snapshot(self) -> Dict[str, Any]:
         """Return public snapshot of current turn state."""
         return {

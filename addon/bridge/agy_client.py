@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterator, List, Optional, Tuple
 
@@ -417,6 +418,20 @@ class AgyClient:
                 except Exception as ex:
                     logger.debug("on_proc_started hook error: %s", ex)
 
+            # Drain stderr continuously in a daemon thread to prevent pipe buffer deadlocks (>64KB)
+            stderr_lines: List[str] = []
+
+            def _drain_stderr() -> None:
+                try:
+                    if proc.stderr:
+                        for err_line in iter(proc.stderr.readline, ""):
+                            stderr_lines.append(err_line)
+                except Exception:
+                    pass
+
+            t_err = threading.Thread(target=_drain_stderr, daemon=True)
+            t_err.start()
+
             full_response: List[str] = []
             final_result: Optional[Dict[str, Any]] = None
 
@@ -491,6 +506,7 @@ class AgyClient:
                     proc.terminate()
                 except Exception:
                     pass
+                t_err.join(timeout=0.5)
                 yield {
                     "type": "cancelled",
                     "message": "Génération interrompue par l'utilisateur",
@@ -498,6 +514,8 @@ class AgyClient:
                 return
 
             proc.wait()
+            t_err.join(timeout=1.0)
+            stderr_text = "".join(stderr_lines)
 
             if final_result:
                 resp_text = final_result.get("response") or "".join(full_response)
@@ -510,7 +528,6 @@ class AgyClient:
                     "conversation_id": final_result.get("conversation_id") or conversation_id,
                 }
             else:
-                stderr_text = proc.stderr.read() if proc.stderr else ""
                 resp_text = "".join(full_response)
                 if proc.returncode == 0 and resp_text:
                     yield {

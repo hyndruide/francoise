@@ -125,7 +125,7 @@ class TestBridgeServer(unittest.TestCase):
             self.assertEqual(resp.status, HTTPStatus.OK)
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("success"))
-            self.assertEqual(data.get("version"), "1.8.19")
+            self.assertEqual(data.get("version"), "1.8.20")
             self.assertIn("provider_authenticated", data)
             self.assertIn("active_provider", data)
             self.assertTrue(data.get("agy_installed"))
@@ -557,6 +557,17 @@ class TestBridgeServer(unittest.TestCase):
                 self.assertIn("81.2%", report_md)
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+
+    def test_active_turn_emit(self) -> None:
+        """Verify ActiveTurn.emit broadcasts events to subscribers."""
+        from bridge.turn_manager import ActiveTurn
+        turn = ActiveTurn(conv_id="test-conv", prompt="test prompt")
+        sub_queue = turn.subscribe()
+        turn.emit({"type": "status", "message": "hello emit"})
+        item = sub_queue.get_nowait()
+        self.assertEqual(item.get("type"), "status")
+        self.assertEqual(item.get("message"), "hello emit")
+        turn.unsubscribe(sub_queue)
 
 
 if __name__ == "__main__":

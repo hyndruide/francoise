@@ -44,6 +44,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger("chassitant.server")
 
+# Cache for RTK status to avoid subprocess latency on resource-constrained systems
+_cached_rtk_gain: Optional[Dict[str, Any]] = None
+_cached_rtk_time: float = 0.0
+_cached_rtk_lock = threading.Lock()
+
 
 class ChassitantRequestHandler(BaseHTTPRequestHandler):
     """HTTP Request Handler for Chassitant Web UI & Bridge API."""
@@ -384,7 +389,7 @@ class ChassitantRequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 {
                     "success": True,
-                    "version": "1.8.19",
+                    "version": "1.8.20",
                     "active_provider": active_prov.provider_id,
                     "provider_name": active_prov.display_name,
                     "provider_authenticated": auth_ok,
@@ -425,27 +430,39 @@ class ChassitantRequestHandler(BaseHTTPRequestHandler):
                 )
                 return
 
+            now = time.time()
+            global _cached_rtk_gain, _cached_rtk_time
+            with _cached_rtk_lock:
+                if _cached_rtk_gain and (now - _cached_rtk_time < 30.0):
+                    self.send_json(HTTPStatus.OK, _cached_rtk_gain)
+                    return
+
             try:
                 res = subprocess.run(
                     [rtk_bin, "gain", "--format", "json"],
                     capture_output=True,
                     text=True,
-                    timeout=4,
+                    timeout=8,
                     check=False,
                 )
                 gain_data = json.loads(res.stdout) if res.stdout.strip() else {}
                 summary = gain_data.get("summary", {})
-                self.send_json(
-                    HTTPStatus.OK,
-                    {
-                        "success": True,
-                        "installed": True,
-                        "binary_path": rtk_bin,
-                        "summary": summary,
-                    },
-                )
+                payload = {
+                    "success": True,
+                    "installed": True,
+                    "binary_path": rtk_bin,
+                    "summary": summary,
+                }
+                with _cached_rtk_lock:
+                    _cached_rtk_gain = payload
+                    _cached_rtk_time = now
+                self.send_json(HTTPStatus.OK, payload)
             except Exception as ex:
                 logger.warning("Error querying rtk gain: %s", ex)
+                with _cached_rtk_lock:
+                    if _cached_rtk_gain:
+                        self.send_json(HTTPStatus.OK, _cached_rtk_gain)
+                        return
                 self.send_json(
                     HTTPStatus.OK,
                     {
