@@ -454,6 +454,7 @@ class TurnManager:
         final_tokens = None
         final_duration = None
         final_usage = None
+        last_stream_error: Optional[str] = None
         active_provider_id = getattr(provider, "provider_id", "agy")
 
         try:
@@ -493,6 +494,9 @@ class TurnManager:
                 if etype == "cancelled":
                     turn.status = "cancelled"
                     break
+                elif etype == "error":
+                    last_stream_error = event.get("error") or "Erreur inconnue de l'agent."
+                    logger.warning("Stream yielded error for conv %s: %s", conv_id, last_stream_error)
                 elif etype == "tool_start":
                     steps_log.append({
                         "type": "tool",
@@ -581,7 +585,7 @@ class TurnManager:
                 })
                 turn.status = "completed"
             else:
-                err_text = "L'assistant n'a renvoyé aucune réponse."
+                err_text = last_stream_error or "L'assistant n'a renvoyé aucune réponse."
                 assistant_msg = conv_store.add_message(
                     conv_id=conv_id,
                     role="assistant",

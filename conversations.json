@@ -1,0 +1,38 @@
+{
+  "4aa88d2b-5e18-4707-8bcf-83957096adc9": {
+    "id": "4aa88d2b-5e18-4707-8bcf-83957096adc9",
+    "agy_conversation_id": null,
+    "title": "Test Compact",
+    "created_at": 1795452356.4161487,
+    "updated_at": 1795452356.4389741,
+    "messages": [
+      {
+        "id": "86f17d99d80db6c4",
+        "role": "assistant",
+        "text": "🧹 [Synthèse de l'historique : 2 messages archivés pour alléger le contexte]",
+        "timestamp": 1795452356.4478712,
+        "tokens": 0
+      },
+      {
+        "id": "91e843fa-0a7b-459e-902e-1fb726a878d4",
+        "role": "user",
+        "text": "Message 2",
+        "timestamp": 1795452356.437597,
+        "tokens": null,
+        "duration": null,
+        "steps": [],
+        "usage": null
+      },
+      {
+        "id": "e69c2cd5-319d-47cd-b9c6-bfc89f0e64df",
+        "role": "assistant",
+        "text": "Response 2",
+        "timestamp": 1795452356.4389632,
+        "tokens": null,
+        "duration": null,
+        "steps": [],
+        "usage": null
+      }
+    ]
+  }
+}

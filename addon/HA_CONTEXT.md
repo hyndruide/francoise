@@ -5,7 +5,7 @@
 > **INTERDICTION FORMELLE d'utiliser `ha_search`** si l'équipement demandé figure dans les tableaux ci-dessous.
 > Utilisez DIRECTEMENT les `entity_id` exacts ci-dessous pour répondre ou créer vos cartes Lovelace !
 
-*Dernière mise à jour : 2026-11-15 (Françoise v1.8.20)*
+*Dernière mise à jour : 2026-11-23 (Françoise v1.8.21)*
 
 ## 1. Météo
 | Entité | Nom | Remarques |

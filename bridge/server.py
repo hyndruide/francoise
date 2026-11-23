@@ -389,7 +389,7 @@ class ChassitantRequestHandler(BaseHTTPRequestHandler):
                 HTTPStatus.OK,
                 {
                     "success": True,
-                    "version": "1.8.20",
+                    "version": "1.8.21",
                     "active_provider": active_prov.provider_id,
                     "provider_name": active_prov.display_name,
                     "provider_authenticated": auth_ok,

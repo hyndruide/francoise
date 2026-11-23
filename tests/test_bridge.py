@@ -125,7 +125,7 @@ class TestBridgeServer(unittest.TestCase):
             self.assertEqual(resp.status, HTTPStatus.OK)
             data = json.loads(resp.read().decode("utf-8"))
             self.assertTrue(data.get("success"))
-            self.assertEqual(data.get("version"), "1.8.20")
+            self.assertEqual(data.get("version"), "1.8.21")
             self.assertIn("provider_authenticated", data)
             self.assertIn("active_provider", data)
             self.assertTrue(data.get("agy_installed"))
@@ -568,6 +568,21 @@ class TestBridgeServer(unittest.TestCase):
         self.assertEqual(item.get("type"), "status")
         self.assertEqual(item.get("message"), "hello emit")
         turn.unsubscribe(sub_queue)
+
+    def test_agy_should_pass_effort(self) -> None:
+        """Verify should_pass_effort logic for models with embedded effort or unsupported effort."""
+        self.assertTrue(AgyClient.should_pass_effort(None))
+        self.assertTrue(AgyClient.should_pass_effort(""))
+        self.assertTrue(AgyClient.should_pass_effort("default"))
+        # Models with embedded effort
+        self.assertFalse(AgyClient.should_pass_effort("gemini-3.8-flash-high"))
+        self.assertFalse(AgyClient.should_pass_effort("gemini-3.8-flash-medium"))
+        self.assertFalse(AgyClient.should_pass_effort("gemini-3.8-flash-low"))
+        self.assertFalse(AgyClient.should_pass_effort("claude-opus-4-6-thinking"))
+        self.assertFalse(AgyClient.should_pass_effort("gpt-oss-120b-medium"))
+        # Claude models
+        self.assertFalse(AgyClient.should_pass_effort("claude-sonnet-4-6"))
+        self.assertFalse(AgyClient.should_pass_effort("claude-3-7-sonnet"))
 
 
 if __name__ == "__main__":

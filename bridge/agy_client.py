@@ -63,6 +63,25 @@ class AgyClient:
 
         return None
 
+    @staticmethod
+    def should_pass_effort(model: Optional[str]) -> bool:
+        """
+        Determine whether agy CLI supports the --effort flag for this model selection.
+        - If model is None, empty, or 'default', --effort is supported.
+        - If model name already contains an effort level (-low, -medium, -high, -xhigh, -max, -thinking),
+          passing --effort causes agy to error with a conflict.
+        - Models like Claude and 'default' (when passed as --model default) do not accept --effort.
+        """
+        if not model or model == "default":
+            return True
+        m = model.lower().strip()
+        for suffix in ("-low", "-medium", "-high", "-xhigh", "-max", "-thinking"):
+            if m.endswith(suffix) or f"{suffix}-" in m:
+                return False
+        if "claude" in m or m == "default":
+            return False
+        return True
+
     def is_installed(self) -> bool:
         """Return True if agy binary is found."""
         return self.binary_path is not None and os.path.isfile(self.binary_path)
@@ -254,13 +273,16 @@ class AgyClient:
         if model and model != "default":
             cmd.extend(["--model", model])
 
-        eff = (effort or "").strip().lower()
-        if not eff or eff == "default":
-            eff = "low"
-        elif eff in ("high", "max", "xhigh"):
-            logger.info("Capping effort '%s' to 'medium' to avoid 300s thinking stall on multi-tool HA operations", eff)
-            eff = "medium"
-        cmd.extend(["--effort", eff])
+        if self.should_pass_effort(model):
+            eff = (effort or "").strip().lower()
+            if not eff or eff == "default":
+                eff = "low"
+            elif eff in ("high", "max", "xhigh"):
+                logger.info("Capping effort '%s' to 'medium' to avoid 300s thinking stall on multi-tool HA operations", eff)
+                eff = "medium"
+            cmd.extend(["--effort", eff])
+        else:
+            eff = "auto"
 
         if dangerously_skip_permissions:
             cmd.append("--dangerously-skip-permissions")
@@ -383,13 +405,16 @@ class AgyClient:
         if model and model != "default":
             cmd.extend(["--model", model])
 
-        eff = (effort or "").strip().lower()
-        if not eff or eff == "default":
-            eff = "low"
-        elif eff in ("high", "max", "xhigh"):
-            logger.info("Capping effort '%s' to 'medium' to avoid 300s thinking stall on multi-tool HA operations", eff)
-            eff = "medium"
-        cmd.extend(["--effort", eff])
+        if self.should_pass_effort(model):
+            eff = (effort or "").strip().lower()
+            if not eff or eff == "default":
+                eff = "low"
+            elif eff in ("high", "max", "xhigh"):
+                logger.info("Capping effort '%s' to 'medium' to avoid 300s thinking stall on multi-tool HA operations", eff)
+                eff = "medium"
+            cmd.extend(["--effort", eff])
+        else:
+            eff = "auto"
 
         if dangerously_skip_permissions:
             cmd.append("--dangerously-skip-permissions")
@@ -518,15 +543,24 @@ class AgyClient:
             stderr_text = "".join(stderr_lines)
 
             if final_result:
-                resp_text = final_result.get("response") or "".join(full_response)
-                yield {
-                    "type": "done",
-                    "response": resp_text,
-                    "status": final_result.get("status", "SUCCESS"),
-                    "duration_seconds": final_result.get("duration_seconds", 0),
-                    "usage": final_result.get("usage", {}),
-                    "conversation_id": final_result.get("conversation_id") or conversation_id,
-                }
+                status = final_result.get("status", "SUCCESS")
+                if status == "ERROR":
+                    err_msg = final_result.get("error") or "".join(stderr_lines).strip() or "Erreur retournée par l'agent."
+                    yield {
+                        "type": "error",
+                        "error": err_msg,
+                        "conversation_id": final_result.get("conversation_id") or conversation_id,
+                    }
+                else:
+                    resp_text = final_result.get("response") or "".join(full_response)
+                    yield {
+                        "type": "done",
+                        "response": resp_text,
+                        "status": status,
+                        "duration_seconds": final_result.get("duration_seconds", 0),
+                        "usage": final_result.get("usage", {}),
+                        "conversation_id": final_result.get("conversation_id") or conversation_id,
+                    }
             else:
                 resp_text = "".join(full_response)
                 if proc.returncode == 0 and resp_text:
